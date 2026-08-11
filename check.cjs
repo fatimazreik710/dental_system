@@ -1,0 +1,1 @@
+fetch('https://dental-system-omega.vercel.app').then(r=>r.text()).then(t=>{const m=t.match(/src="([^"]+\.js)"/);if(m)fetch('https://dental-system-omega.vercel.app'+m[1]).then(r=>r.text()).then(js=>{console.log('qns3:', js.includes('dental-system-qns3')); console.log('localhost:', js.includes('localhost:8000')); console.log('api.onrender:', js.includes('dental-system-api'));})})
