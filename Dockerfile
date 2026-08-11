@@ -27,7 +27,7 @@ WORKDIR /var/www
 COPY . /var/www
 
 # Install composer dependencies without running auto-scripts
-RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
+RUN composer update --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # Set permissions for Laravel
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
