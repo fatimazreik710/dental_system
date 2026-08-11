@@ -138,6 +138,24 @@ export const DentalProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
+  const sendWhatsAppReminder = async (appointmentId) => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/appointments/${appointmentId}/send-reminder`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Open WhatsApp with pre-filled message
+        window.open(data.whatsapp_url, '_blank');
+        // Refresh appointments so UI shows reminder sent
+        const aRes = await authFetch(`${API_BASE_URL}/appointments`);
+        setAppointments(await aRes.json());
+        return true;
+      }
+      return false;
+    } catch (e) { console.error(e); return false; }
+  };
+
   const addPatient = async (newPatient) => {
     try {
       const isFormData = newPatient instanceof FormData;
@@ -257,7 +275,7 @@ export const DentalProvider = ({ children }) => {
     <DentalContext.Provider value={{ 
       patients, appointments, inventory, 
       isAuthenticated, user, token, login, logout,
-      addAppointment, updateAppointment, deleteAppointment,
+      addAppointment, updateAppointment, deleteAppointment, sendWhatsAppReminder,
       addPatient, updatePatientBilling, updatePatientFDI, 
       updateStock, addInventoryItem, addPayment, deletePayment 
     }}>

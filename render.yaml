@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: dental-system-api
+    runtime: php
+    buildCommand: bash render-build.sh
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    envVars:
+      - key: APP_NAME
+        value: DentalSystem
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://dental-system-api.onrender.com
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        fromDatabase:
+          name: dental-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dental-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dental-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dental-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dental-db
+          property: password
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: FRONTEND_URL
+        value: https://dental-system.vercel.app
+
+databases:
+  - name: dental-db
+    databaseName: dental_db
+    user: dental_user

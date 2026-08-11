@@ -3,7 +3,7 @@ import { useDental } from '../context/DentalContext';
 import './Appointments.css';
 
 const Appointments = () => {
-  const { appointments, patients, addAppointment, updateAppointment, deleteAppointment } = useDental();
+  const { appointments, patients, addAppointment, updateAppointment, deleteAppointment, sendWhatsAppReminder } = useDental();
   const [showModal, setShowModal] = useState(false);
   const [editingAppt, setEditingAppt] = useState(null); // null = create mode, object = edit mode
   const [formData, setFormData] = useState({ date: '', time: '', patient_id: '', notes: '', status: 'Scheduled' });
@@ -23,7 +23,7 @@ const Appointments = () => {
     const d = String(dt.getDate()).padStart(2, '0');
     const h = String(dt.getHours()).padStart(2, '0');
     const min = String(dt.getMinutes()).padStart(2, '0');
-    
+
     setEditingAppt(appt);
     setFormData({
       date: `${y}-${m}-${d}`,
@@ -69,7 +69,7 @@ const Appointments = () => {
 
   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
   const today = new Date();
-  
+
   // Helper to format date as YYYY-MM-DD using LOCAL time (not UTC)
   const formatDate = (date) => {
     const y = date.getFullYear();
@@ -78,6 +78,13 @@ const Appointments = () => {
     return `${y}-${m}-${d}`;
   };
   const todayStr = formatDate(today);
+
+  // Compute tomorrow's date string for reminder logic
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = formatDate(tomorrow);
+
+  const [sendingReminder, setSendingReminder] = useState(null); // id of appt being sent
 
   // Generate week dates (next 7 days including today)
   const weekDates = Array.from({ length: 7 }).map((_, i) => {
@@ -101,6 +108,18 @@ const Appointments = () => {
     return { ...appt, date: dateStr, time: timeStr, patientName: appt.patient ? appt.patient.full_name : 'Unknown' };
   });
 
+  // Appointments tomorrow that haven't been reminded yet
+  const remindersDue = processedAppointments.filter(
+    a => a.date === tomorrowStr && !a.whatsapp_reminder_sent && a.status === 'Scheduled'
+  );
+
+  const handleSendReminder = async (apptId, e) => {
+    e.stopPropagation();
+    setSendingReminder(apptId);
+    await sendWhatsAppReminder(apptId);
+    setSendingReminder(null);
+  };
+
   // Shared appointment card renderer
   const renderApptCard = (appt, compact = false) => (
     <div key={appt.id} className={`calendar-appt-card ${compact ? 'compact' : ''}`}>
@@ -108,8 +127,22 @@ const Appointments = () => {
         {compact && <div className="appt-time-sm">{appt.time}</div>}
         <strong>{appt.patientName}</strong>
         {!compact && <span className="appt-card-notes"> — {appt.notes || 'No notes'}</span>}
+        {appt.whatsapp_reminder_sent && (
+          <span className="reminder-sent-badge">✅ Reminder Sent</span>
+        )}
       </div>
       <div className="appt-card-actions">
+        {/* Show reminder button only for tomorrow's scheduled appointments not yet reminded */}
+        {appt.date === tomorrowStr && !appt.whatsapp_reminder_sent && appt.status === 'Scheduled' && (
+          <button
+            className="appt-action-btn reminder-btn"
+            onClick={(e) => handleSendReminder(appt.id, e)}
+            title="Send WhatsApp Reminder"
+            disabled={sendingReminder === appt.id}
+          >
+            {sendingReminder === appt.id ? '⏳' : '📲'}
+          </button>
+        )}
         <button className="appt-action-btn edit-btn" onClick={(e) => { e.stopPropagation(); openEditModal(appt); }} title="Edit">✏️</button>
         <button className="appt-action-btn delete-btn" onClick={(e) => { e.stopPropagation(); setConfirmDelete(appt.id); }} title="Delete">🗑️</button>
       </div>
@@ -133,8 +166,19 @@ const Appointments = () => {
         </div>
       </header>
 
+      {/* Reminders Due Banner */}
+      {remindersDue.length > 0 && (
+        <div className="reminders-banner glass-panel">
+          <span className="reminders-banner-icon">📲</span>
+          <div>
+            <strong>{remindersDue.length} patient{remindersDue.length > 1 ? 's' : ''} need{remindersDue.length === 1 ? 's' : ''} a WhatsApp reminder for tomorrow!</strong>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8 }}>Click the 📲 button on each appointment card below to send.</p>
+          </div>
+        </div>
+      )}
+
       <div className="calendar-container glass-panel">
-        
+
         {view === 'day' && (
           <div className="view-day">
             <div className="calendar-header">
@@ -171,7 +215,7 @@ const Appointments = () => {
                 return (
                   <div key={dateStr} className="week-day-col">
                     <div className="week-day-header">{dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                    <div className="week-day-content" onClick={() => { if(dayAppts.length === 0) openCreateModal(dateStr, '09:00'); }}>
+                    <div className="week-day-content" onClick={() => { if (dayAppts.length === 0) openCreateModal(dateStr, '09:00'); }}>
                       {dayAppts.map(appt => renderApptCard(appt, true))}
                       {dayAppts.length === 0 && <div className="empty-slot-indicator">+ Book</div>}
                     </div>
@@ -213,17 +257,17 @@ const Appointments = () => {
           <div className="modal-content glass-panel" style={{ width: '500px' }}>
             <h2>{editingAppt ? 'Edit Appointment' : 'Book Appointment'}</h2>
             <form onSubmit={handleSubmit}>
-              <select value={formData.patient_id} onChange={e => setFormData({...formData, patient_id: e.target.value})} required className="glass-panel" style={{background: 'var(--bg-primary)'}}>
+              <select value={formData.patient_id} onChange={e => setFormData({ ...formData, patient_id: e.target.value })} required className="glass-panel" style={{ background: 'var(--bg-primary)' }}>
                 <option value="">Select Patient</option>
                 {patients.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
               </select>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required className="glass-panel" style={{flex: 1, background: 'var(--bg-primary)'}} />
-                <input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} required className="glass-panel" style={{flex: 1, background: 'var(--bg-primary)'}} />
+                <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required className="glass-panel" style={{ flex: 1, background: 'var(--bg-primary)' }} />
+                <input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} required className="glass-panel" style={{ flex: 1, background: 'var(--bg-primary)' }} />
               </div>
-              <input type="text" placeholder="Treatment Type / Notes" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} required className="glass-panel" style={{background: 'var(--bg-primary)'}} />
+              <input type="text" placeholder="Treatment Type / Notes" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} required className="glass-panel" style={{ background: 'var(--bg-primary)' }} />
               {editingAppt && (
-                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="glass-panel" style={{background: 'var(--bg-primary)'}}>
+                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="glass-panel" style={{ background: 'var(--bg-primary)' }}>
                   <option value="Scheduled">Scheduled</option>
                   <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>

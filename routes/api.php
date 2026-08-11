@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('appointments', AppointmentController::class);
+    Route::post('appointments/{appointment}/send-reminder', [AppointmentController::class, 'sendReminder']);
 
     /*
     |--------------------------------------------------------------------------
