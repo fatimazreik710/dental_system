@@ -15,8 +15,11 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->username)
-            ->orWhere('name', $request->username)
+        // تنظيف الإيميل أو الاسم من المسافات وتحويله لـ lowercase
+        $input = strtolower(trim($request->username));
+
+        $user = User::whereRaw('LOWER(email) = ?', [$input])
+            ->orWhereRaw('LOWER(name) = ?', [$input])
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -30,7 +33,6 @@ class AuthController extends Controller
             'token' => $token
         ]);
     }
-
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
