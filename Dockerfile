@@ -23,13 +23,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www
 
-# Copy existing application contents
+# Copy application files
 COPY . /var/www
 
-# Install composer dependencies (with ignore-platform-reqs to prevent ext errors)
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+# Install composer dependencies without running auto-scripts
+RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
 
-# Set permissions for Laravel storage and cache
+# Set permissions for Laravel
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 # Expose port 8080
