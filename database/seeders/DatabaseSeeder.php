@@ -15,11 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'dr.farah@example.com'], // Or any email you prefer
             [
                 'name' => 'Dr. Farah',
-                'password' => bcrypt('password123'), // Change this later!
+                'password' => 'password123', // Let the model cast hash it
             ]
         );
     }
